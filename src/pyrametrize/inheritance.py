@@ -5,28 +5,36 @@ class ConfigurationMergeException(Exception):
     pass
 
 
-def merge_configurations(parent_config: Dict, child_config: Dict) -> Dict:
-    merge_result = {}
+class ConfigurationMerger:
+    def __get_merge_operator(self, parent_config_value, child_config_value):
+        pass
 
-    child_only_keys = child_config.keys() - parent_config.keys()
-    for key in child_only_keys:
-        merge_result[key] = child_config[key]
+    def merge_configurations(self, parent_config: Dict, child_config: Dict) -> Dict:
+        merge_result = {}
 
-    parent_only_keys = parent_config.keys() - child_config.keys()
-    for key in parent_only_keys:
-        merge_result[key] = parent_config[key]
+        self.add_child_specific_keys(child_config, merge_result, parent_config)
+        self.add_parent_specific_keys(child_config, merge_result, parent_config)
+        common_keys = parent_config.keys() & child_config.keys()
+        for key in common_keys:
+            pcv = parent_config[key]
+            ccv = child_config[key]
+            if isinstance(pcv, str) and isinstance(ccv, str):
+                merge_result[key] = (
+                    ccv  # TODO: here can be a customization of merge behavior
+                )
+            elif isinstance(pcv, dict) and isinstance(ccv, dict):
+                merge_result[key] = self.merge_configurations(pcv, ccv)
+            else:
+                raise ConfigurationMergeException("Can't merge ", pcv, ccv)
 
-    common_keys = parent_config.keys() & child_config.keys()
-    for key in common_keys:
-        pck = parent_config[key]
-        cck = child_config[key]
-        if isinstance(pck, str) and isinstance(cck, str):
-            merge_result[key] = (
-                cck  # TODO: here can be a customization of merge behavior
-            )
-        elif isinstance(pck, dict) and isinstance(cck, dict):
-            merge_result[key] = merge_configurations(pck, cck)
-        else:
-            raise ConfigurationMergeException("Can't merge ", pck, cck)
+        return merge_result
 
-    return merge_result
+    def add_parent_specific_keys(self, child_config, merge_result, parent_config):
+        parent_only_keys = parent_config.keys() - child_config.keys()
+        for key in parent_only_keys:
+            merge_result[key] = parent_config[key]
+
+    def add_child_specific_keys(self, child_config, merge_result, parent_config):
+        child_only_keys = child_config.keys() - parent_config.keys()
+        for key in child_only_keys:
+            merge_result[key] = child_config[key]
